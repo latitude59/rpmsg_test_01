@@ -10,18 +10,15 @@
  */
 
 #include <stdio.h>
-//#include "common.h"
-
-const int TC_TRANSFER_COUNT = 12;
-const int DATA_LEN = 40;
-
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include "common.h"
+
+const int TC_TRANSFER_COUNT = 12;
+const int DATA_LEN = 40;
 
 #define STRERR strerror( errno )
 
