@@ -9,6 +9,12 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
+#include <stdio.h>
+//#include "common.h"
+
+const int TC_TRANSFER_COUNT = 12;
+const int DATA_LEN = 40;
+
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
@@ -129,4 +135,34 @@ int tc_receive( int fd, int transfer_count, int data_len )
     }
     return 0;
 }
+
+
+int tc_send_receive( const int fd )
+{
+    int result;
+
+    result = tc_send( fd, TC_TRANSFER_COUNT, DATA_LEN );
+    if (result != 0)
+        return result;
+
+    result = tc_receive( fd, TC_TRANSFER_COUNT, DATA_LEN );
+    return result;
+}
+
+
+int main( int argc, char* argv[] )
+{
+    int fd, result;
+
+    fd = init();
+    if( fd >= 0 )
+    {
+        printf( "%s successfully initialised\n", rpmsgDev );
+        result = tc_send_receive( fd );
+        deinit( fd );
+        return result;
+    }
+    return fd;
+}
+
 

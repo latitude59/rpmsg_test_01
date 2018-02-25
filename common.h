@@ -12,16 +12,15 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-int init(void);
+int init();
 
-void deinit(int fd);
+void deinit( int fd );
 
-int pattern_cmp(char *buffer, char pattern, int len);
+int pattern_cmp( char *buffer, char pattern, int len );
 
-int tc_send(int fd, int test_case, int step, int transfer_count, int data_len);
+int tc_send( int fd, int transfer_count, int data_len );
 
-int tc_receive(int fd, int test_case, int step, int transfer_count,
-    int data_len);
+int tc_receive( int fd, int transfer_count, int data_len) ;
 
 #endif
 

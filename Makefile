@@ -5,8 +5,7 @@ INC = -I.
 DEPS = 
 
 #SOURCES = $(wildcard *.c)
-SOURCES = main.c \
-		  common.c
+SOURCES = rpmsg_test_01.c 
 
 OBJECTS = $(SOURCES:.c=.o)
 TARGET = rpmsg_test_01
