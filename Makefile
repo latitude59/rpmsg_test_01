@@ -1,5 +1,6 @@
 
-CFLAGS = -lpthread -Os
+CFLAGS = -Os
+LDFLAGS = -pthread
 DEFINES =  
 INC = -I.
 DEPS = 
@@ -13,7 +14,7 @@ TARGET = rpmsg_test_01
 all:	$(SOURCES) $(TARGET)
 
 $(TARGET):    $(OBJECTS)
-	$(CC) $(OBJECTS) -o $(TARGET)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) -o $(TARGET)
 
 %.o:    %.c $(DEPS)
 	$(CC) -c $(CFLAGS) $(DEFINES) $(INC) $< -o $@

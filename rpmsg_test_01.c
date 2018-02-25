@@ -16,6 +16,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <pthread.h>
 
 #define STRERR strerror( errno )
 
@@ -78,6 +79,8 @@ int pattern_cmp( char *buffer, char pattern, int len )
     return 0;
 }
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 // send <data_len> bytes <transfer_count> times
 int tc_send( int fd, int transfer_count, int data_len )
 {
@@ -95,10 +98,13 @@ int tc_send( int fd, int transfer_count, int data_len )
             printf( "tc_send() error: %s\n", STRERR );
             return -1;
         }
+
+        pthread_mutex_lock( &mutex );
         printf( "sent [%02d]: ", i );
         for( int j = 0; j < data_len; j++ )
             printf( " %02x", data[j] );
         printf( "\n" );
+        pthread_mutex_unlock( &mutex );
     }
     return 0;
 }
@@ -119,10 +125,13 @@ int tc_receive( int fd, int transfer_count, int data_len )
             printf( "tc_receive() error: %s\n", STRERR );
             return -1;
         }
+
+        pthread_mutex_lock( &mutex );
         printf( "got  [%02d]: ", i );
         for( int j = 0; j < data_len; j++ )
             printf( " %02x", data[j] );
         printf( "\n" );
+        pthread_mutex_unlock( &mutex );
 
         int result = pattern_cmp( data, i, data_len );
         if( result == -1 )
@@ -135,21 +144,73 @@ int tc_receive( int fd, int transfer_count, int data_len )
 }
 
 
+void* threadfunc( void* parg )
+{
+    printf( "%s\n", __func__ );
+    int* pfd = (int*)parg;
+    tc_receive( *pfd, TC_TRANSFER_COUNT, DATA_LEN );
+    return NULL;
+}
+
+
 int main( int argc, char* argv[] )
 {
     int fd, retval;
-
+    pthread_t thread;
+    int arg;
     fd = init();
     if( fd < 0 )
         return fd;
 
     printf( "%s successfully initialised\n", RPMSGDEV );
 
-    retval = tc_send( fd, TC_TRANSFER_COUNT, DATA_LEN );
-    if( retval == 0 )
-        retval = tc_receive( fd, TC_TRANSFER_COUNT, DATA_LEN );
+    printf( "creating read thread\n" );
+    if( pthread_create( &thread, NULL, threadfunc, &fd ) != 0 )
+    {
+        printf( "pthread_create() error: %s\n", STRERR );
+        deinit( fd );
+        return -1;
+    }
+
+    printf( "read thread created\n" );
+    tc_send( fd, TC_TRANSFER_COUNT, DATA_LEN );
+
+    // wait for thread to finish
+    if( pthread_join( thread, NULL ) != 0 )
+    {
+        printf( "pthread_join() error: %s\n", STRERR );
+        deinit( fd );
+        return -1;
+    }
+
+    printf( "thread terminated\n" );
+
+//    if( tc_send( fd, TC_TRANSFER_COUNT, DATA_LEN ) == 0 )
+//    {
+//        printf( "creating thread\n" );
+//        if( pthread_create( &thread, NULL, threadfunc, &fd ) == 0 )
+//        {
+//            printf( "thread created\n" );
+//            // wait for thread to finish
+//            if( pthread_join( thread, NULL ) != 0 )
+//            {
+//                printf( "pthread_join() error: %s\n", STRERR );
+//                deinit( fd );
+//                return -1;
+//            }
+//            printf( "thread terminated\n" );
+//        }
+//        else
+//        {
+//            printf( "pthread_create() error: %s\n", STRERR );
+//            deinit( fd );
+//            return -1;
+//        }
+//    }
+
+    //tc_receive( fd, TC_TRANSFER_COUNT, DATA_LEN );
     deinit( fd );
-    return retval;
+    return 0;
 }
 
 
