@@ -17,12 +17,11 @@
 #include <unistd.h>
 #include <errno.h>
 
-const int TC_TRANSFER_COUNT = 12;
-const int DATA_LEN = 40;
-
 #define STRERR strerror( errno )
 
-const char rpmsgDev[] = "/dev/ttyRPMSG";
+const int TC_TRANSFER_COUNT = 12;
+const int DATA_LEN = 40;
+const char RPMSGDEV[] = "/dev/ttyRPMSG";
 
 struct termios ti;
 
@@ -32,13 +31,13 @@ int init( void )
 {
     int fd;
 
-    fd = open( rpmsgDev, O_RDWR | O_NOCTTY );
+    fd = open( RPMSGDEV, O_RDWR | O_NOCTTY );
     if( fd < 0 )
     {
-        printf( "Unable to open %s: %s\n", rpmsgDev, STRERR );
+        printf( "Unable to open %s: %s\n", RPMSGDEV, STRERR );
         return -1;
     }
-    printf( "%s opened: fd %d\n", rpmsgDev, fd );
+    printf( "%s opened: fd %d\n", RPMSGDEV, fd );
 
     tcflush( fd, TCIOFLUSH );       // flush data received but not read, and data written but not transmitted
 
@@ -64,6 +63,8 @@ void deinit( int fd )
 {
     if( close( fd ) != 0 )
         printf( "close() error: %s\n", STRERR );
+    else
+        printf( "%s closed\n" , RPMSGDEV );
 }
 
 // compare received data with expected
@@ -134,32 +135,21 @@ int tc_receive( int fd, int transfer_count, int data_len )
 }
 
 
-int tc_send_receive( const int fd )
-{
-    int result;
-
-    result = tc_send( fd, TC_TRANSFER_COUNT, DATA_LEN );
-    if (result != 0)
-        return result;
-
-    result = tc_receive( fd, TC_TRANSFER_COUNT, DATA_LEN );
-    return result;
-}
-
-
 int main( int argc, char* argv[] )
 {
-    int fd, result;
+    int fd, retval;
 
     fd = init();
-    if( fd >= 0 )
-    {
-        printf( "%s successfully initialised\n", rpmsgDev );
-        result = tc_send_receive( fd );
-        deinit( fd );
-        return result;
-    }
-    return fd;
+    if( fd < 0 )
+        return fd;
+
+    printf( "%s successfully initialised\n", RPMSGDEV );
+
+    retval = tc_send( fd, TC_TRANSFER_COUNT, DATA_LEN );
+    if( retval == 0 )
+        retval = tc_receive( fd, TC_TRANSFER_COUNT, DATA_LEN );
+    deinit( fd );
+    return retval;
 }
 
 
