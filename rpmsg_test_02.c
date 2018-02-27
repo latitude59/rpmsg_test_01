@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
+#include "message_protocol.h"
 
 #define STRERR strerror( errno )
 
@@ -68,78 +69,50 @@ void deinit( int fd )
         printf( "%s closed\n" , RPMSGDEV );
 }
 
-// compare received data with expected
-int pattern_cmp( char *buffer, char pattern, int len )
-{
-    int i;
-
-    for( int i = 0; i < len; i++ )
-        if( buffer[i] != pattern )
-            return -1;
-    return 0;
-}
-
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// send <data_len> bytes <transfer_count> times
-int tc_send( int fd, int transfer_count, int data_len )
+#if 0
+int send_packet( int fd, packet_t* packet )
 {
-    int bytesWritten = 0;
-    char data[data_len];
+    int bytes_written = 0;
 
-    memset( data, -1, data_len );
-
-    for( int i = 0; i < transfer_count; i++ )
+    size_t len = sizeof( packet_t ) + ( packet->msg_count * sizeof( message_t ) );
+    bytes_written = write( fd, (void*)packet, len );
+    if( bytes_written != len )
     {
-        memset( data, i, data_len );
-        bytesWritten = write( fd, data, data_len );
-        if( bytesWritten != data_len )
-        {
-            printf( "tc_send() error: %s\n", STRERR );
-            return -1;
-        }
-
-        pthread_mutex_lock( &mutex );
-        printf( "sent [%02d]: ", i );
-        for( int j = 0; j < data_len; j++ )
-            printf( " %02x", data[j] );
-        printf( "\n" );
-        pthread_mutex_unlock( &mutex );
+        printf( "send_packet() write() error: len = %d, bytes_written = %d - %s\r\n", len, bytes_written, STRERR );
+        return -1;
     }
+
     return 0;
 }
+#endif
 
-// receive <data_len> bytes <transfer_count> times and compare with expected
-int tc_receive( int fd, int transfer_count, int data_len )
+int decode_packet( int len, char* data )
 {
-    int bytesRead = 0;
-    char data[data_len];
-
-    memset( data, -1, data_len );
-
-    for( int i = 0; i < transfer_count; i++ )
+    if( data == NULL )
+        return -1;
+    // check packet length
+    packet_hdr_t* hdr = (packet_hdr_t*)data;
+    pthread_mutex_lock( &mutex );
+    printf( "start_byte: 0x%02x\n", hdr->start_byte );
+    printf( "ack_req: %u\n", hdr->ack_req );
+    printf( "msg_count: %u\n", hdr->msg_count );
+    printf( "data_len: %u\n", hdr->data_len );
+    for( int msg_num = 0; msg_num < hdr->msg_count; msg_num++ )
     {
-        bytesRead = read( fd, data, data_len );
-        if( bytesRead != data_len )
-        {
-            printf( "tc_receive() error: %s\n", STRERR );
-            return -1;
-        }
-
-        pthread_mutex_lock( &mutex );
-        printf( "got  [%02d]: ", i );
-        for( int j = 0; j < data_len; j++ )
-            printf( " %02x", data[j] );
-        printf( "\n" );
-        pthread_mutex_unlock( &mutex );
-
-        int result = pattern_cmp( data, i, data_len );
-        if( result == -1 )
-        {
-            printf( "pattern_cmp() error\n" );
-            return result;
-        }
+        message_t* msg_ptr = (message_t*)( data + sizeof( packet_hdr_t ) + ( sizeof( message_t ) * msg_num ) );
+        printf( "message %d:\n", msg_num + 1 );
+        printf( "  command: %u\n", msg_ptr->cmd );
+        printf( "  address: %u\n", msg_ptr->dev_addr );
+        printf( "  ack: %u\n", msg_ptr->ack );
+        printf( "  timestamp: %u\n", msg_ptr->timestamp );
+        printf( "  value: %u\n", msg_ptr->value );
     }
+    // check crc
+    uint32_t* crc = (uint32_t*)( data + sizeof( packet_hdr_t ) + ( sizeof( message_t ) * hdr->msg_count ) );
+    printf( "crc: 0x%08x\n", *crc );
+    pthread_mutex_unlock( &mutex );
     return 0;
 }
 
@@ -154,6 +127,7 @@ void* threadfunc( void* parg )
     int msgs_rxd = 0;
     for( ; ; )
     {
+        printf( "here\n" );
         memset( data, 0, BUF_SZ );
         bytes_read = read( *pfd, data, BUF_SZ );
         pthread_mutex_lock( &mutex );
@@ -162,7 +136,7 @@ void* threadfunc( void* parg )
             printf( " %02x", data[i] );
         printf( "\n" );
         pthread_mutex_unlock( &mutex );
-
+        decode_packet( bytes_read, data );
     }
     return NULL;
 }
@@ -188,7 +162,22 @@ int main( int argc, char* argv[] )
     }
 
     printf( "read thread created\n" );
-    tc_send( fd, TC_TRANSFER_COUNT, DATA_LEN );
+    //tc_send( fd, TC_TRANSFER_COUNT, DATA_LEN );
+
+    for( ; ; )
+    {
+        printf( "enter command: " );
+        char c = getchar();
+        switch( c )
+        {
+        case '1':
+            printf( "\nsend 1 message\n" );
+            break;
+        default:
+            printf( "\nsend no messages\n" );
+            break;
+        }
+    }
 
     // wait for thread to finish
     if( pthread_join( thread, NULL ) != 0 )

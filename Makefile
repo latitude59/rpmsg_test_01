@@ -11,7 +11,7 @@ all: rpmsg_test_01 rpmsg_test_02
 rpmsg_test_01: rpmsg_test_01.c
 	$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) rpmsg_test_01.c -o rpmsg_test_01
 
-rpmsg_test_02: rpmsg_test_02.c
+rpmsg_test_02: rpmsg_test_02.c message_protocol.h
 	$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) rpmsg_test_02.c -o rpmsg_test_02
 
 .PHONY:	clean
