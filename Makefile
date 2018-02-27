@@ -5,22 +5,17 @@ DEFINES =
 INC = -I.
 DEPS = 
 
-#SOURCES = $(wildcard *.c)
-SOURCES = rpmsg_test_01.c 
 
-OBJECTS = $(SOURCES:.c=.o)
-TARGET = rpmsg_test_01
+all: rpmsg_test_01 rpmsg_test_02
 
-all:	$(SOURCES) $(TARGET)
+rpmsg_test_01: rpmsg_test_01.c
+	$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) rpmsg_test_01.c -o rpmsg_test_01
 
-$(TARGET):    $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) -o $(TARGET)
-
-%.o:    %.c $(DEPS)
-	$(CC) -c $(CFLAGS) $(DEFINES) $(INC) $< -o $@
+rpmsg_test_02: rpmsg_test_02.c
+	$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) rpmsg_test_02.c -o rpmsg_test_02
 
 .PHONY:	clean
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f rpmsg_test_01 rpmsg_test_02
 
